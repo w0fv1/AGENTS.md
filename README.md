@@ -30,12 +30,19 @@
 
 这套规则的收益取决于模型对抽象工程原则的理解能力和指令遵循能力。
 
-| 模型类型 | 使用建议 | 预期收益 |
+| 模型/系列 | 使用建议 | 适合场景 |
 | --- | --- | --- |
-| Fable5 等大规模模型 | 按需使用 | 模型本身已经具备较强的工程理解，额外规则的边际提升相对有限。 |
-| 5.6 Sol 等中等规模且指令遵循良好的模型 | 推荐使用 | 能够理解并稳定执行抽象原则，通常可以获得明显提升。 |
-| 小模型 | 可选 | 更适合清晰、具体、步骤化的任务指令，难以充分吸收这类高抽象规则。 |
-
+| OpenAI GPT-6 Astra、GPT-6.1 Sol、GPT-6 Luna | Astra 用于最难任务；Sol 作为默认均衡选择；Luna 用于低成本高并发 | 编码、复杂推理、Agent、通用工作 |
+| Anthropic Claude Opus 5.5、Sonnet 5.5、Haiku 5.5 | Opus 处理复杂任务；Sonnet 兼顾质量与成本；Haiku 适合速度和规模 | 长文档、代码审查、写作、工具调用 |
+| Google Gemini 4 Argon、Gemini 3.8 Flash | Argon 用于旗舰推理；Flash 用于快速、低成本、多模态任务 | 超长上下文、图片/音频/视频、代码 |
+| xAI Grok 4.7 | 适合需要实时信息、联网和强风格表达的任务 | 搜索辅助、分析、开放式问答 |
+| DeepSeek V4 Pro、V4 Flash | 适合成本敏感的推理和代码任务；优先通过官方渠道确认具体版本 | 中文、数学、代码、批量调用 |
+| Qwen 3.8 Max、Qwen 3.8 Flash | Max 追求质量；Flash 追求速度和成本 | 中文、多语言、代码、企业私有化 |
+| GLM-5.3、GLM-5.3-Flash | 适合中文任务和较低成本部署 | 中文写作、代码、知识问答 |
+| Meta Llama 系列 | 适合自部署、微调和可控的开源权重场景 | 私有化、边缘部署、定制模型 |
+| Mistral Large、Mixtral 系列 | 适合欧洲生态、开放部署和高性价比推理 | 多语言、代码、私有化 |
+| Kimi、豆包等中文模型 | 按具体产品和版本选择，重点核对上下文、工具和数据策略 | 中文长文档、办公、搜索和内容生成 |
+| 小模型、蒸馏模型 | 只有在任务边界清晰且验收标准明确时使用 | 分类、抽取、格式转换、简单自动化 |
 它最适合作为具备一定推理能力和良好指令遵循能力的 Agent 的工程放大器。小模型如果需要稳定产出，应优先补充面向具体任务的明确步骤和验收标准。
 
 ## 安装与更新
@@ -50,6 +57,34 @@ gh release download --repo w0fv1/AGENTS.md --pattern AGENTS.md --clobber
 
 不使用 GitHub CLI 时，可以直接下载覆盖。
 
+如果要在一个父文件夹中批量更新其**直接子文件夹**里的 `AGENTS.md`（不递归更深层目录），请在该父文件夹执行对应命令。命令只处理已经存在 `AGENTS.md` 的子文件夹，不会新建文件。
+
+### Windows PowerShell：批量更新一层子文件夹
+
+```powershell
+$uri = "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
+Get-ChildItem -Directory | ForEach-Object {
+    $target = Join-Path $_.FullName "AGENTS.md"
+    if (Test-Path -LiteralPath $target) {
+        Invoke-WebRequest $uri -OutFile $target
+        Write-Host "Updated $target"
+    }
+}
+```
+
+### Windows CMD：批量更新一层子文件夹
+
+```batch
+for /d %D in (*) do @if exist "%D\AGENTS.md" curl.exe -fL "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md" -o "%D\AGENTS.md"
+```
+
+### macOS/Linux：批量更新一层子文件夹
+
+```shell
+for dir in */; do
+  [ -f "${dir}AGENTS.md" ] && curl -fL "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md" -o "${dir}AGENTS.md"
+done
+```
 ### Windows PowerShell
 
 ```powershell
