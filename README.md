@@ -85,3 +85,30 @@ Windows CMD 请对每个匹配目录使用 set /p 或 choice 单独询问；只�
 ## 发布
 
 版本由发布工作流自动生成，每个正式版本都可以独立下载和追溯。
+
+
+### 4. 更新、提交、推送分别确认
+
+多仓库命令必须分别确认三个动作：
+
+1. 输入 `Y/y` 才更新当前仓库的 AGENTS.md。
+2. 更新完成后再次输入 `Y/y` 才执行 git add 和 git commit。
+3. 提交完成后再次输入 `Y/y` 才执行 git push。
+
+任何一步输入其他内容，都跳过当前仓库，继续下一个；不会自动提交或推送。PowerShell 示例：
+
+~~~powershell
+$uri = "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
+Get-ChildItem -Directory | ForEach-Object {
+    $repo = $_.FullName
+    $file = Join-Path $repo "AGENTS.md"
+    if (Test-Path (Join-Path $repo ".git")) {
+        if ((Read-Host "更新 $repo？Y=继续") -notmatch "^[Yy]$") { return }
+        Invoke-WebRequest $uri -OutFile $file
+        if ((Read-Host "提交 $repo？Y=继续") -notmatch "^[Yy]$") { return }
+        git -C $repo add AGENTS.md
+        git -C $repo commit -m "Update AGENTS.md"
+        if ((Read-Host "推送 $repo？Y=继续") -match "^[Yy]$") { git -C $repo push }
+    }
+}
+~~~
