@@ -122,3 +122,33 @@ PowerShell：`$ok = Read-Host "确认覆盖直接子文件夹中的 AGENTS.md？
 CMD：`set /p OK="确认覆盖直接子文件夹中的 AGENTS.md？输入 Y 继续：" && if /I not "%OK%"=="Y" exit /b 1`，确认后再执行上面的 CMD 批量命令。
 
 macOS/Linux：`read -r -p "确认覆盖直接子文件夹中的 AGENTS.md？输入 Y 继续：" ok; case "$ok" in [Yy]) ;; *) exit 1;; esac`，确认后再执行上面的 shell 批量命令。
+
+
+### 逐个子文件夹确认
+
+PowerShell：每发现一个 `AGENTS.md` 都询问一次；不是 `Y/y` 就跳过当前文件夹。
+
+```powershell
+$uri = "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
+Get-ChildItem -Directory | ForEach-Object {
+    $file = Join-Path $_.FullName "AGENTS.md"
+    if (Test-Path -LiteralPath $file) {
+        $ok = Read-Host "更新 $file？输入 Y 继续，其他输入跳过"
+        if ($ok -match "^[Yy]$") { Invoke-WebRequest $uri -OutFile $file }
+    }
+}
+```
+
+macOS/Linux：
+
+```shell
+for dir in */; do
+  file="${dir}AGENTS.md"
+  if [ -f "$file" ]; then
+    read -r -p "更新 $file？输入 Y 继续，其他输入跳过：" ok
+    case "$ok" in [Yy]) curl -fL "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md" -o "$file" ;; esac
+  fi
+done
+```
+
+CMD 请对每个匹配目录调用 `choice` 或 `set /p` 逐个询问；不是 `Y` 就跳过当前目录。
