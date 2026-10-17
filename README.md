@@ -108,3 +108,8 @@ curl -fL "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
 ## 发布
 
 版本由[发布工作流](.github/workflows/release.yml)自动生成，每个正式版本都可以独立下载和追溯。
+
+
+> **使用建议：** 对具备推理能力和良好指令遵循能力的模型，十分建议使用这份 `AGENTS.md`。
+>
+> **批量更新确认：** 批量更新命令会覆盖直接子文件夹中的 `AGENTS.md`。执行命令前必须先确认目标目录和文件，只有明确输入 `Y`/`y` 后才允许继续；输入其他内容应立即取消。
