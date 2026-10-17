@@ -113,3 +113,12 @@ curl -fL "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
 > **使用建议：** 对具备推理能力和良好指令遵循能力的模型，十分建议使用这份 `AGENTS.md`。
 >
 > **批量更新确认：** 批量更新命令会覆盖直接子文件夹中的 `AGENTS.md`。执行命令前必须先确认目标目录和文件，只有明确输入 `Y`/`y` 后才允许继续；输入其他内容应立即取消。
+
+
+### 带确认的批量更新命令
+
+PowerShell：`$ok = Read-Host "确认覆盖直接子文件夹中的 AGENTS.md？输入 Y 继续"; if ($ok -notmatch "^[Yy]$") { return }; Get-ChildItem -Directory | ForEach-Object { $f = Join-Path $_.FullName "AGENTS.md"; if (Test-Path $f) { Invoke-WebRequest "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md" -OutFile $f } }`
+
+CMD：`set /p OK="确认覆盖直接子文件夹中的 AGENTS.md？输入 Y 继续：" && if /I not "%OK%"=="Y" exit /b 1`，确认后再执行上面的 CMD 批量命令。
+
+macOS/Linux：`read -r -p "确认覆盖直接子文件夹中的 AGENTS.md？输入 Y 继续：" ok; case "$ok" in [Yy]) ;; *) exit 1;; esac`，确认后再执行上面的 shell 批量命令。
