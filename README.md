@@ -38,14 +38,14 @@
 **PowerShell**
 
 ```powershell
-$uri = "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
-Invoke-WebRequest $uri -OutFile AGENTS.md
+$uri = "https://raw.githubusercontent.com/w0fv1/AGENTS.md/main/AGENTS.md"
+Invoke-WebRequest -Uri $uri -OutFile AGENTS.md
 ```
 
 **macOS / Linux**
 
 ```bash
-curl -fsSL https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md -o AGENTS.md
+curl -fsSL https://raw.githubusercontent.com/w0fv1/AGENTS.md/main/AGENTS.md -o AGENTS.md
 ```
 
 ### 2. 逐个确认更新直接子文件夹
@@ -60,30 +60,66 @@ curl -fsSL https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md
 **PowerShell**
 
 ```powershell
-$uri = "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
+$uri = "https://raw.githubusercontent.com/w0fv1/AGENTS.md/main/AGENTS.md"
 
-Get-ChildItem -Directory | ForEach-Object {
-    $repo = $_.FullName
-    $repoPath = (Resolve-Path -LiteralPath $repo).Path
-    $gitRoot = git -C $repo rev-parse --show-toplevel 2>$null
+foreach ($dir in Get-ChildItem -Directory) {
+    $repo = $dir.FullName
     $file = Join-Path $repo "AGENTS.md"
+    $gitRootRaw = (& git -C $repo rev-parse --show-toplevel 2>$null | Select-Object -First 1)
 
-    if ($LASTEXITCODE -eq 0 -and $gitRoot -and ((Resolve-Path -LiteralPath $gitRoot).Path -eq $repoPath) -and (Test-Path -LiteralPath $file)) {
-        $ok = Read-Host "更新 $repo？Y=继续"
-        if ($ok -match "^[Yy]$") {
-            Invoke-WebRequest $uri -OutFile $file
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitRootRaw) -or -not (Test-Path -LiteralPath $file -PathType Leaf)) {
+        continue
+    }
 
-            $ok = Read-Host "提交 $repo？Y=继续"
-            if ($ok -match "^[Yy]$") {
-                git -C $repo add AGENTS.md
-                git -C $repo commit -m "Update AGENTS.md"
+    $gitRoot = [IO.Path]::GetFullPath(($gitRootRaw.Trim() -replace "/", "\")).TrimEnd("\")
+    $repoPath = [IO.Path]::GetFullPath($repo).TrimEnd("\")
+    if (-not [StringComparer]::OrdinalIgnoreCase.Equals($gitRoot, $repoPath)) {
+        continue
+    }
 
-                $ok = Read-Host "Push $repo？Y=继续"
-                if ($ok -match "^[Yy]$") {
-                    git -C $repo push
-                }
-            }
-        }
+    $ok = Read-Host "更新 $repo？Y=继续"
+    if ($ok -notmatch "^[Yy]$") {
+        continue
+    }
+
+    Invoke-WebRequest -Uri $uri -OutFile $file
+    & git -C $repo add -- AGENTS.md
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "git add 失败：$repo"
+        continue
+    }
+
+    & git -C $repo diff --cached --quiet -- AGENTS.md
+    $diffExit = $LASTEXITCODE
+    if ($diffExit -eq 0) {
+        Write-Host "没有变化：$repo"
+        continue
+    }
+    if ($diffExit -ne 1) {
+        Write-Warning "无法检查暂存区：$repo"
+        continue
+    }
+
+    $ok = Read-Host "提交 $repo？Y=继续"
+    if ($ok -notmatch "^[Yy]$") {
+        & git -C $repo reset -- AGENTS.md
+        continue
+    }
+
+    & git -C $repo commit -m "Update AGENTS.md"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "git commit 失败：$repo"
+        continue
+    }
+
+    $ok = Read-Host "Push $repo？Y=继续"
+    if ($ok -notmatch "^[Yy]$") {
+        continue
+    }
+
+    & git -C $repo push
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "git push 失败：$repo"
     }
 }
 ```
@@ -91,7 +127,7 @@ Get-ChildItem -Directory | ForEach-Object {
 **macOS / Linux**
 
 ```bash
-uri="https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
+uri="https://raw.githubusercontent.com/w0fv1/AGENTS.md/main/AGENTS.md"
 
 for repo in */; do
     git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1 || continue
@@ -103,9 +139,24 @@ for repo in */; do
     [[ "$ok" =~ ^[Yy]$ ]] || continue
     curl -fsSL "$uri" -o "$file"
 
+    git -C "$repo" add -- AGENTS.md
+    git -C "$repo" diff --cached --quiet -- AGENTS.md
+    diff_status=$?
+    if [ "$diff_status" -eq 0 ]; then
+        echo "没有变化：$repo"
+        git -C "$repo" reset -- AGENTS.md
+        continue
+    fi
+    if [ "$diff_status" -ne 1 ]; then
+        echo "无法检查暂存区：$repo" >&2
+        continue
+    fi
+
     read -r -p "提交 $repo？Y=继续：" ok
-    [[ "$ok" =~ ^[Yy]$ ]] || continue
-    git -C "$repo" add AGENTS.md
+    if [[ ! "$ok" =~ ^[Yy]$ ]]; then
+        git -C "$repo" reset -- AGENTS.md
+        continue
+    fi
     git -C "$repo" commit -m "Update AGENTS.md"
 
     read -r -p "Push $repo？Y=继续：" ok
