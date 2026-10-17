@@ -52,7 +52,7 @@ curl -fsSL https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md
 
 在父文件夹执行，只检查一层：
 
-- 子文件夹直属存在 `.git`，才视为 Git 仓库；
+- 先用 Git 验证子文件夹本身是有效仓库，且 Git 根目录就是该子文件夹；
 - 仓库根目录存在 `AGENTS.md`，才进入确认流程；
 - 更新、提交、Push 分别确认；
 - 输入不是 `Y/y`，跳过当前步骤并继续处理后面的仓库。
@@ -64,10 +64,11 @@ $uri = "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
 
 Get-ChildItem -Directory | ForEach-Object {
     $repo = $_.FullName
-    $gitDir = Join-Path $repo ".git"
+    $repoPath = (Resolve-Path -LiteralPath $repo).Path
+    $gitRoot = git -C $repo rev-parse --show-toplevel 2>$null
     $file = Join-Path $repo "AGENTS.md"
 
-    if ((Test-Path -LiteralPath $gitDir) -and (Test-Path -LiteralPath $file)) {
+    if ($LASTEXITCODE -eq 0 -and $gitRoot -and ((Resolve-Path -LiteralPath $gitRoot).Path -eq $repoPath) -and (Test-Path -LiteralPath $file)) {
         $ok = Read-Host "更新 $repo？Y=继续"
         if ($ok -match "^[Yy]$") {
             Invoke-WebRequest $uri -OutFile $file
@@ -93,7 +94,8 @@ Get-ChildItem -Directory | ForEach-Object {
 uri="https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
 
 for repo in */; do
-    [ -d "$repo/.git" ] || continue
+    git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1 || continue
+    [ "$(git -C "$repo" rev-parse --show-toplevel 2>/dev/null)" = "$(cd "$repo" && pwd)" ] || continue
     file="$repo/AGENTS.md"
     [ -f "$file" ] || continue
 
