@@ -34,14 +34,13 @@ Invoke-WebRequest $uri -OutFile AGENTS.md
 
 ### 2. 逐个确认更新直接子文件夹
 
-只检查一层。使用 Git 判断子文件夹是否为仓库；只有仓库已有 `AGENTS.md` 才询问。每个仓库分别确认更新、提交和 Push，输入不是 Y/y 就跳过对应步骤并继续。
+只检查一层。只有子文件夹直属存在 `.git`，且已有 `AGENTS.md`，才会询问；不会把上级 Git 仓库中的普通子文件夹当成仓库。每个仓库分别确认更新、提交和 Push，输入不是 Y/y 就跳过对应步骤并继续。
 
 ```powershell
 $uri = "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
 Get-ChildItem -Directory | ForEach-Object {
     $repo = $_.FullName
-    $repoRoot = git -C $repo rev-parse --show-toplevel 2>$null
-    if ($LASTEXITCODE -eq 0 -and $repoRoot) {
+    if (Test-Path -LiteralPath (Join-Path $repo ".git")) {
         $file = Join-Path $repo "AGENTS.md"
         if (Test-Path -LiteralPath $file) {
             $ok = Read-Host "更新 $repo？Y=继续"
