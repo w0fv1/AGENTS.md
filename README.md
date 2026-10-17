@@ -27,38 +27,34 @@
 
 ### 1. 更新当前文件夹
 
-PowerShell：
-
 ```powershell
 $uri = "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
 Invoke-WebRequest $uri -OutFile AGENTS.md
 ```
 
-macOS/Linux：
-
-```bash
-curl -fsSL https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md -o AGENTS.md
-```
-
 ### 2. 逐个确认更新直接子文件夹
 
-只检查当前文件夹的直接子文件夹。先判断子文件夹是否为 Git 仓库；只有存在 `.git` 且已有 `AGENTS.md` 的子文件夹才会询问。每个仓库分别确认更新、提交和 Push，输入不是 Y/y 就跳过当前仓库并继续。
-
-PowerShell：
+只检查一层。使用 Git 判断子文件夹是否为仓库；只有仓库已有 `AGENTS.md` 才询问。每个仓库分别确认更新、提交和 Push，输入不是 Y/y 就跳过对应步骤并继续。
 
 ```powershell
 $uri = "https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
 Get-ChildItem -Directory | ForEach-Object {
     $repo = $_.FullName
-    if (Test-Path (Join-Path $repo ".git")) {
+    $repoRoot = git -C $repo rev-parse --show-toplevel 2>$null
+    if ($LASTEXITCODE -eq 0 -and $repoRoot) {
         $file = Join-Path $repo "AGENTS.md"
         if (Test-Path -LiteralPath $file) {
-            if ((Read-Host "更新 $repo？Y=继续") -notmatch "^[Yy]$") { return }
-            Invoke-WebRequest $uri -OutFile $file
-            if ((Read-Host "提交 $repo？Y=继续") -notmatch "^[Yy]$") { return }
-            git -C $repo add AGENTS.md
-            git -C $repo commit -m "Update AGENTS.md"
-            if ((Read-Host "Push $repo？Y=继续") -match "^[Yy]$") { git -C $repo push }
+            $ok = Read-Host "更新 $repo？Y=继续"
+            if ($ok -match "^[Yy]$") {
+                Invoke-WebRequest $uri -OutFile $file
+                $ok = Read-Host "提交 $repo？Y=继续"
+                if ($ok -match "^[Yy]$") {
+                    git -C $repo add AGENTS.md
+                    git -C $repo commit -m "Update AGENTS.md"
+                    $ok = Read-Host "Push $repo？Y=继续"
+                    if ($ok -match "^[Yy]$") { git -C $repo push }
+                }
+            }
         }
     }
 }
@@ -69,15 +65,16 @@ macOS/Linux：
 ```bash
 uri="https://github.com/w0fv1/AGENTS.md/releases/latest/download/AGENTS.md"
 for repo in */; do
-    if [ -d "${repo}.git" ] && [ -f "${repo}AGENTS.md" ]; then
-        read -r -p "更新 ${repo}? Y=继续：" ok
-        [[ "$ok" =~ ^[Yy]$ ]] || continue
-        curl -fsSL "$uri" -o "${repo}AGENTS.md"
-        read -r -p "提交 ${repo}? Y=继续：" ok
-        [[ "$ok" =~ ^[Yy]$ ]] || continue
-        git -C "$repo" add AGENTS.md && git -C "$repo" commit -m "Update AGENTS.md"
-        read -r -p "Push ${repo}? Y=继续：" ok
-        [[ "$ok" =~ ^[Yy]$ ]] && git -C "$repo" push
-    fi
+    git -C "$repo" rev-parse --show-toplevel >/dev/null 2>&1 || continue
+    file="${repo}AGENTS.md"
+    [ -f "$file" ] || continue
+    read -r -p "更新 ${repo}? Y=继续：" ok
+    [[ "$ok" =~ ^[Yy]$ ]] || continue
+    curl -fsSL "$uri" -o "$file"
+    read -r -p "提交 ${repo}? Y=继续：" ok
+    [[ "$ok" =~ ^[Yy]$ ]] || continue
+    git -C "$repo" add AGENTS.md && git -C "$repo" commit -m "Update AGENTS.md"
+    read -r -p "Push ${repo}? Y=继续：" ok
+    [[ "$ok" =~ ^[Yy]$ ]] && git -C "$repo" push
 done
 ```
